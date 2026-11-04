@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import {
   cleanLastNewline,
   getHighlighterOptions,
@@ -13,25 +15,21 @@ const PIERRE_THEME_NAMES = {
 } as const;
 
 const PIERRE_RENDER_OPTIONS = {
-  dark: {
-    theme: PIERRE_THEME_NAMES.dark,
-    useTokenTransformer: false,
-    tokenizeMaxLineLength: 1000,
-    lineDiffType: "word-alt" as const,
-    maxLineDiffLength: 2000,
-  },
-  light: {
-    theme: PIERRE_THEME_NAMES.light,
-    useTokenTransformer: false,
-    tokenizeMaxLineLength: 1000,
-    lineDiffType: "word-alt" as const,
-    maxLineDiffLength: 2000,
-  },
+  useTokenTransformer: false,
+  tokenizeMaxLineLength: 1000,
+  lineDiffType: "word-alt" as const,
+  maxLineDiffLength: 2000,
 } as const;
 
 type HighlightOptions = ReturnType<typeof getHighlighterOptions>;
+type LoadedTheme = {
+  cacheKey: string;
+  highlighterTheme: string | Record<string, unknown>;
+  renderTheme: string;
+};
 
 const highlighterOptionsByKey = new Map<string, HighlightOptions>();
+const themesByPath = new Map<string, Promise<Record<string, unknown>>>();
 
 export async function loadHighlightedDiff(metadata: FileDiffMetadata): Promise<HighlightedDiffSet> {
   const [dark, light] = await Promise.all([
@@ -93,12 +91,11 @@ export function cleanDiffLine(line: string | undefined) {
 async function highlightForAppearance(metadata: FileDiffMetadata, appearance: PierreAppearance): Promise<HighlightedDiffCode> {
   try {
     const language = metadata.lang ?? "text";
-    const cacheKey = `${appearance}:${language}`;
+    const theme = await getTheme(appearance);
+    const cacheKey = `${theme.cacheKey}:${language}`;
     const highlighterOptions =
       highlighterOptionsByKey.get(cacheKey) ??
-      getHighlighterOptions(language, {
-        theme: PIERRE_THEME_NAMES[appearance],
-      });
+      getHighlighterOptions(language, { theme: theme.highlighterTheme } as never);
 
     if (!highlighterOptionsByKey.has(cacheKey)) {
       highlighterOptionsByKey.set(cacheKey, highlighterOptions);
@@ -112,7 +109,7 @@ async function highlightForAppearance(metadata: FileDiffMetadata, appearance: Pi
     const highlighted = renderDiffWithHighlighter(
       metadata,
       highlighter,
-      PIERRE_RENDER_OPTIONS[appearance],
+      { ...PIERRE_RENDER_OPTIONS, theme: theme.renderTheme },
     );
 
     return {
@@ -125,6 +122,40 @@ async function highlightForAppearance(metadata: FileDiffMetadata, appearance: Pi
       additionLines: [],
     };
   }
+}
+
+async function getTheme(appearance: PierreAppearance): Promise<LoadedTheme> {
+  const suffix = appearance.toUpperCase();
+  const commonFile = process.env.PIERRE_DIFF_THEME_FILE?.trim();
+  const appearanceFile = process.env[`PIERRE_DIFF_THEME_${suffix}_FILE`]?.trim();
+  const filePath = appearanceFile || commonFile;
+
+  if (filePath) {
+    const absolutePath = resolve(filePath);
+    let themePromise = themesByPath.get(absolutePath);
+    if (!themePromise) {
+      themePromise = readFile(absolutePath, "utf8").then((contents) => {
+        const theme = JSON.parse(contents) as Record<string, unknown>;
+        if (typeof theme.name !== "string" || !theme.name) {
+          throw new Error(`Shiki theme at ${absolutePath} must have a name`);
+        }
+        return theme;
+      });
+      themesByPath.set(absolutePath, themePromise);
+    }
+
+    const theme = await themePromise;
+    return {
+      cacheKey: `${absolutePath}:${theme.name}`,
+      highlighterTheme: theme,
+      renderTheme: theme.name as string,
+    };
+  }
+
+  const commonTheme = process.env.PIERRE_DIFF_THEME?.trim();
+  const appearanceTheme = process.env[`PIERRE_DIFF_THEME_${suffix}`]?.trim();
+  const name = appearanceTheme || commonTheme || PIERRE_THEME_NAMES[appearance];
+  return { cacheKey: name, highlighterTheme: name, renderTheme: name };
 }
 
 function tabify(text: string) {
