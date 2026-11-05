@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/shikijs/shiki/main/packages/shiki/src/themes/theme.schema.json",
+  "name": "usgc-polyminimal2",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#050505",
+    "editor.foreground": "#DDDDDD",
+    "editorLineNumber.foreground": "#7E86B4",
+    "editorLineNumber.activeForeground": "#DDDDDD",
+    "editor.selectionBackground": "#454057",
+    "editorCursor.foreground": "#74acdf"
+  },
+  "tokenColors": [
+    { "scope": ["comment", "punctuation.definition.comment"], "settings": { "foreground": "#7E86B4", "fontStyle": "italic" } },
+    { "scope": ["keyword", "storage", "storage.type", "storage.modifier", "entity.name.tag"], "settings": { "foreground": "#AD99FF" } },
+    { "scope": ["entity.name.function", "support.function", "meta.function-call"], "settings": { "foreground": "#74acdf" } },
+    { "scope": ["variable", "identifier", "meta.definition.variable"], "settings": { "foreground": "#DDDDDD" } },
+    { "scope": ["string", "string.quoted", "constant.other.symbol"], "settings": { "foreground": "#00FFAA" } },
+    { "scope": ["constant.numeric", "constant.language", "constant.character"], "settings": { "foreground": "#EC8FB0" } },
+    { "scope": ["entity.name.type", "entity.name.class", "support.type", "support.class"], "settings": { "foreground": "#7E86B4" } },
+    { "scope": ["keyword.operator", "punctuation", "meta.brace"], "settings": { "foreground": "#A8A8A8" } },
+    { "scope": ["invalid", "invalid.illegal"], "settings": { "foreground": "#E8838F" } }
+  ]
+}
