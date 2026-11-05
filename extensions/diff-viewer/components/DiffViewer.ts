@@ -223,8 +223,8 @@ function openAnsi(style: { fg?: string; bg?: string; bold?: boolean }) {
   return `\u001b[${codes.join(";")}m`;
 }
 
-function toRgb(hex: string | undefined) {
-  const normalized = hex?.trim();
+function toRgb(hex: unknown) {
+  const normalized = typeof hex === "string" ? hex.trim() : undefined;
   if (!normalized || !/^#[0-9a-fA-F]{6}$/.test(normalized)) {
     return undefined;
   }
